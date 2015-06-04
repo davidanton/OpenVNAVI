@@ -1,4 +1,4 @@
-# OpenVNAV
-OpenVNAV (Open Vibrotactile Navigation Aid for the Visually impaired)
+# OpenVNAVI
+OpenVNAV (Open Vibrotactile Navigation Aid for the Visually Impaired)
 
 https://hci.rwth-aachen.de/sanchez
