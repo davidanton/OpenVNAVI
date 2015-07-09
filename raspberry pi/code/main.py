@@ -24,7 +24,6 @@ OpenNI1 + OpenCV2 -> It works
 	OpenNI built following txt doc guide
 	OpenCV compiled from source -D WITH_OPENNI=YES
 
-To turn motors completely off (ojo, 4096!): setPWM(pin,4096,0)
 Decide wether to install libraries on /usr/local/lib/python2.7/dist-packages, 
 or just put them on the same folder and import them."""
 
@@ -40,6 +39,7 @@ import numpy
 import sys
 import os
 import time
+import RPi.GPIO as GPIO
 from PWM_driver import PWM
 
 
@@ -80,7 +80,7 @@ def depthTest():
 	abc = (["a","b","c","d","e","f","g","h","i","j","k","l","m",
 		  "n","o","p","q","r","s","t","u","v","w","x","y","z"])
 	values = 7
-	gain = 5
+	testGain = 5
 	maxChannel = 4
 
 	for x in range(0, values):
@@ -88,7 +88,7 @@ def depthTest():
 			capture.grab()
 			print "Retrieving channel " + str(y) + abc[x]
 			success, rawFrame = capture.retrieve(channel = y)
-			frame640y = gain * int(x) * rawFrame
+			frame640y = testGain * int(x) * rawFrame
 			cv2.imwrite("test_frames/" + str(y) + abc[x] + ".png", frame640y)
 
 def sweepTest():
@@ -96,13 +96,15 @@ def sweepTest():
 	""" Sweep up for all motors """
 
 	minPWM = 300  
-	maxPWM = 2500  
-	for i in range(minPWM,maxPWM,20):
-		for j in range(0,7):
+	maxPWM = 3000
+	step = 200  
+	for i in range(minPWM,maxPWM,step):
+		for j in range(0,8):
 			for k in range(0,16):
 		  		IC[j].setPWM(k, 0, i)
 		  		time.sleep(0.001)
 		  		print "IC: " + str(j) + " motor: " + str(k) + " PWM: " + str(i)
+		  		# time.sleep(1)
 
 
 # Other functions:
@@ -110,44 +112,48 @@ def sweepTest():
 def getFrame():
 
 	""" Gets the frame from the sensor and stores it it. 
-	Returns a x-bit 16x8 array """
+	Returns 16x8 numpy array """
 
 	capture.grab()
-	success, rawFrame = capture.retrieve(channel = 0)
+	success, rawFrame = capture.retrieve(channel = channel)
 	frame640 = gain * rawFrame
-	# Resizes the image to 16x8 and stores the grayscale values in an array. 
-	# (change 8 to 12 to maintain aspect ratio, but change the limits  of the loop as well!) 
 	frame16 = cv2.resize(frame640, (16, 8)) 
-	cv2.imwrite('frame640.png', frame640)
-	cv2.imwrite('frame16.png', frame16)
-	print frame16
+	frame16 = frame16.astype(int)
+	# cv2.imwrite('frame640.png', frame640)
+	# cv2.imwrite('frame16.png', frame16)
 	return frame16
 
 def setVibration():
 
 	""" Sets PWM values to each vibration motor unit. """
-	PWM16 = mappingFunction * frame16
+
+	maxPWM = 3000
+	PWM16 = mappingFunction * getFrame()
 	for row in range(0,8):
 		for col in range (0,16):
-			IC[row].setPWM(col,0,(PWM16[row,col]))
-			print (frame16[row,col]*16+15),
-		print "\n"
-
+			if PWM16[row,col] > maxPWM:
+				PWM16[row,col] = maxPWM
+			elif PWM16[row,col] == 0:
+				PWM16[row,col] = maxPWM 
+			else:
+				IC[row].setPWM(col,0,(PWM16[row,col]))
+				# print (PWM16[row,col]),
+		# print "\n"
 
 # Main function
 # ============================================================================
 
 # Initialization of PWM drivers. Use PWM(0x40, debug=True) for debugging. 
 IC = []
-freq = 490 #PWM frequency [Hz]
+freq = 1000 #PWM frequency [Hz]
 for i in range(0,8):
 	IC.append(PWM(0x40+i))
 	IC[i].setPWMFreq(freq)
 
-# Initialization of the sensor
+# Initialization of the sensor. 
 sensor = CV_CAP_OPENNI_ASUS
-channel = 0
-gain = 15
+channel = 3
+gain = 5
 capture = cv2.VideoCapture(sensor)
 capture.open(sensor) 
 
@@ -157,41 +163,62 @@ else:
 	print "Device opened successfully"
 
 # Mapping of 8-bit grayscale values to 12-bit PWM values. 
-mappingFunction = 1
+mappingFunction = 8
+
+# GPIO
+GPIO.setmode(GPIO.BCM)
+
+
+# Input NO switch
+GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+sw2 = GPIO.input(18)
+
+# # Beep
+# GPIO.setwarnings(False)
+# GPIO.setup(13, GPIO.OUT)
+
+# beep = GPIO.PWM(13, 7000)
+# beep.start(100)
+# time.sleep(3)
+# beep.stop()
+
+# Waits for switch to be pressed
+print "System ready, press switch to continue..."
+GPIO.wait_for_edge(18, GPIO.RISING)
 
 def main():
 
     try:
-
 		while True:
 			# For loop runtime calculation
 			tick = time.clock() 
 			
 			# depthTest()
 			
-			sweepTest()
+			# sweepTest()
 
 			# getFrame()
 
-			# setVibration()
+			setVibration()
 
 			# Calculates loop runtime
 			tock = time.clock()
 			runtime = tock - tick
 			print "Loop runtime: " + str(runtime) + "s"
-			print "FPS: " + str(1/runtime)
+			print "FPS: " + str(int(1/runtime)) 
   
     except KeyboardInterrupt:
-    	for i in range(0,7):
+    	for i in range(0,8):
     		IC[i].setAllPWM(0, 0)
-        print "Shutdown requested...exiting"
-    except Exception:
-        traceback.print_exc(file=sys.stdout)
-    sys.exit(0)
+        print "Shutdown requested. \nExiting..."
+
+    finally:  
+    	GPIO.cleanup
+    	print "Done"
+
 
 if __name__ == "__main__":
     main()
-
 
 
 
@@ -203,3 +230,9 @@ if __name__ == "__main__":
 # If Asus image is not grayscale, convert by using cv2.CV_LOAD_IMAGE_GRAYSCALE
 # Reads the 640x480 depth frame. OpenCV reads BGR by default, here it's loaded as grayscale.
 # frame640 = cv2.imread('frame641.png', cv2.CV_LOAD_IMAGE_UNCHANGED)
+
+# frame16 = cv2.imread('frame16.png ', cv2.CV_LOAD_IMAGE_GRAYSCALE)
+# print frame16
+# print frame16.shape
+# frame16 = frame16.reshape(8, 16)
+# frame16 = numpy.asarray(frame16)
