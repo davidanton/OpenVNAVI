@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 """
 
@@ -213,45 +214,49 @@ def setVibration():
                 # print (PWM16[row,col]),
         # print "\n"
 
+
 # Main function
 # ============================================================================
-
-# Initialization of PWM drivers. Use PWM(0x40, debug=True) for debugging.
-IC = []
-freq = 1000 #PWM frequency [Hz].
-for i in range(0,8):
-    IC.append(PWM(0x40+i))
-    IC[i].setPWMFreq(freq)
-
-# Initialization of the sensor.
-sensor = CV_CAP_OPENNI_ASUS
-channel = 3
-gain = 5
-capture = cv2.VideoCapture(sensor)
-capture.open(sensor)
-while not capture.isOpened():
-    print "Couldn't open sensor. Is it connected?"
-    time.sleep(100)
-print "Sensor opened successfully"
-
-# GPIO initialization.
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-sw1 = GPIO.input(18) # Input NO switch.
-flag = 0 # Flag for start/stop button.
-
-# Waits for sw1 to be pressed.
-print "System ready, press switch to continue..."
-beep(1, 0.2)
-GPIO.wait_for_edge(18, GPIO.RISING)
-
-startUp()
 
 def main():
 
     try:
-        while True:
+        # Initialization of PWM drivers. PWM(0x40, debug=True) for debugging.
+        global IC
+        IC = []
+        freq = 1000 #PWM frequency [Hz].
+        for i in range(0,8):
+            IC.append(PWM(0x40+i))
+            IC[i].setPWMFreq(freq)
 
+        # Initialization of the sensor.
+        sensor = CV_CAP_OPENNI_ASUS
+        global channel
+        channel = 3
+        global gain
+        gain = 5
+        global capture
+        capture = cv2.VideoCapture(sensor)
+        capture.open(sensor)
+        while not capture.isOpened():
+            print "Couldn't open sensor. Is it connected?"
+            time.sleep(100)
+        print "Sensor opened successfully"
+
+        # GPIO initialization.
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        sw1 = GPIO.input(18) # Input NO switch.
+        flag = 0 # Flag for start/stop button.
+
+        # Waits for sw1 to be pressed.
+        print "System ready, press switch to continue..."
+        beep(1, 0.2)
+        GPIO.wait_for_edge(18, GPIO.RISING)
+
+        startUp()
+
+        while True:
             if (GPIO.input(18) == False) or (GPIO.input(18) == True and flag == 1):
                 flag = 0
                 tick = time.clock()
@@ -271,7 +276,6 @@ def main():
                 runtime = tock - tick
                 print "Loop runtime: " + str(runtime) + "s"
                 print "FPS: " + str(int(1/runtime))
-
             else:
                 pause()
 
