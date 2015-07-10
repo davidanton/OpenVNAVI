@@ -12,16 +12,14 @@ github.com/davidanton
 WORK IN PROGRESS 
 BETA(TM)
 
-
 THINGS TO IMPLEMENT:
 
-- Implement modes: 
+- Crop image to delete therow of black pixels that appears on the left
+- Modes: 
 1: Gain, increase/decrease.
 2: Threshold, values for far-away objects are neglected.
-- Make one motor vibrate a number of times to indicate the mode when the button 
-is pressed.
-- Implement image stabilization
-- Get more FPS
+- Image stabilization
+- Optimize for more FPS
 - "frame16.astype(np.uint8)" doesn't work for some reason, it would have been 
 easier to use that and map from 8-bit to 12-bit without the need for setting a
 maxPWM. I used frame16.astype(int) and set maxPWM.
@@ -35,10 +33,9 @@ OpenNI1 + OpenCV2 -> It works
 	Installed OpenNI Unstable 1.5.4.0 but the other versions seem to work also,
 	try with a stable version. 
 	OpenNI built following readme
-	OpenCV compiled from source -D WITH_OPENNI=YES
+	OpenCV compiled from source -D WITH_OPENNI=YES 
 
-Decide wether to install libraries on /usr/local/lib/python2.7/dist-packages, 
-or just put them on the same folder and import them."""
+"""
 
 __author__ = "David Anton Sanchez"
 __license__ = "GPLv3"
@@ -62,7 +59,8 @@ from PWM_driver import PWM
 """ Each device and channel is identified by an integer. The C++ 
 version of OpenCV defines some constants for the identifiers of 
 certain devices and channels. However, these constants are not 
-defined in the Python version and it needs to be performed manually. """
+defined in the Python version and the assignment needs to be 
+performed manually. """
 
 # Devices.
 CV_CAP_OPENNI = 900 # OpenNI (for Microsoft Kinect)
@@ -126,6 +124,18 @@ def sweepTest():
 				time.sleep(0.001)
 				print "IC: " + str(j) + " motor: " + str(k) + " PWM: " + str(i)
 
+def strobeTest(row):
+
+	""" Strobes maximum and minimum values for a given row. """
+
+	minPWM = 300  
+	maxPWM = 3000 
+
+	IC[row].setAllPWM(0, minPWM)
+	time.sleep (1)
+	IC[row].setAllPWM(0, maxPWM)
+	time.sleep (1)
+
 
 # Other functions:
 
@@ -143,6 +153,9 @@ def startUp():
 			IC[j].setAllPWM(0, i)
 
 def beep(number, t):
+
+	""" Simple buzzer beep. """
+
 	GPIO.setwarnings(False)
 	GPIO.setup(12, GPIO.OUT)
 	for i in range (0, number):
@@ -153,6 +166,9 @@ def beep(number, t):
 		buzzer.stop()
 
 def pause():
+
+	""" Pause function. """
+
 	for i in range(0, 8):
 		IC[i].setAllPWM(0, 0)
 	print "System paused by the user."
@@ -166,26 +182,24 @@ def pause():
 def getFrame():
 
 	""" Gets the frame from the sensor and stores it it. 
-	Returns 16x8 numpy array """
+	Returns 16x8 numpy array. """
 
 	capture.grab()
 	success, rawFrame = capture.retrieve(channel = channel)
 	frame640 = gain * rawFrame
 	frame16 = cv2.resize(frame640, (16, 8)) 
 	frame16 = frame16.astype(int)
-
 	# For debugging 
 	# cv2.imwrite("frame640.png", frame640) 
 	# cv2.imwrite("frame16.png", frame16)
 	# print frame16
-
 	return frame16
-
 
 def setVibration():
 
 	""" Sets PWM values to each vibration motor unit. """
-
+ 	
+	mappingFunction = 8 # Mapping of grayscale values to PWM values.
 	PWM16 = mappingFunction * getFrame()
 	maxPWM = 3060
 	for row in range(0,8):
@@ -199,12 +213,13 @@ def setVibration():
 				# print (PWM16[row,col]),
 		# print "\n"
 
+
 # Main function
 # ============================================================================
 
 # Initialization of PWM drivers. Use PWM(0x40, debug=True) for debugging. 
 IC = []
-freq = 1000 #P WM frequency [Hz].
+freq = 1000 #PWM frequency [Hz].
 for i in range(0,8):
 	IC.append(PWM(0x40+i))
 	IC[i].setPWMFreq(freq)
@@ -218,26 +233,17 @@ capture.open(sensor)
 while not capture.isOpened():
 	print "Couldn't open sensor. Is it connected?"	
 	time.sleep(100)
-
 print "Sensor opened successfully"
 
- # Mapping of grayscale values to PWM values.
-mappingFunction = 8
-
-# GPIO setup.
+# GPIO initialization.
 GPIO.setmode(GPIO.BCM)
-
-# Input NO switch.
 GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-sw1 = GPIO.input(18)
-# Flag for start/stop button.
-flag = 0
+sw1 = GPIO.input(18) # Input NO switch.
+flag = 0 # Flag for start/stop button.
 
-# Beep.
-beep(1, 0.2)
-
-# Waits for switch to be pressed.
+# Waits for sw1 to be pressed.
 print "System ready, press switch to continue..."
+beep(1, 0.2)
 GPIO.wait_for_edge(18, GPIO.RISING)
 
 startUp()
@@ -248,10 +254,14 @@ def main():
 		while True:
 
 			if (GPIO.input(18) == False) or (GPIO.input(18) == True and flag == 1):
-				# Flag for start/stop button.
-				flag = 0
-				# For loop runtime calculation.
+				flag = 0 
 				tick = time.clock() 
+
+				# depthTest()
+
+				# sweepTest()
+
+				# strobeTest(0)
 
 				# getFrame()
 
