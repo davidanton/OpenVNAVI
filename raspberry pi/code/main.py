@@ -140,7 +140,7 @@ def strobeTest(row):
 
 # Other functions:
 
-def startUp():
+def fadeIn():
 
     """ Ramps from low to medium vibration values for a smooth
     transition. """
@@ -150,6 +150,19 @@ def startUp():
     step = 10
 
     for i in range(minPWM,maxPWM,step):
+        for j in range(0,8):
+            IC[j].setAllPWM(0, i)
+
+def fadeOut():
+
+    """ Ramps from current to low vibration values for a smooth
+    transition. """
+
+    minPWM = 300
+    maxPWM = 1000
+    step = 10
+
+    for i in range(maxPWM, minPWM, -step):
         for j in range(0,8):
             IC[j].setAllPWM(0, i)
 
@@ -173,12 +186,12 @@ def pause():
     for i in range(0, 8):
         IC[i].setAllPWM(0, 0)
     print "System paused by the user."
-    time.sleep(1)
-    beep(2, 0.2)
+    time.sleep(0.5)
+    beep(1, 0.2)
     print "System ready, press switch to continue..."
     flag = 1
     GPIO.wait_for_edge(18, GPIO.RISING)
-    startUp()
+    fadeIn()
 
 def getFrame():
 
@@ -230,6 +243,7 @@ def main():
             IC[i].setPWMFreq(freq)
 
         # Initialization of the sensor.
+        global sensor
         sensor = CV_CAP_OPENNI_ASUS
         global channel
         channel = 3
@@ -254,7 +268,7 @@ def main():
         beep(1, 0.2)
         GPIO.wait_for_edge(18, GPIO.RISING)
 
-        startUp()
+        fadeIn()
 
         while True:
             if (GPIO.input(18) == False) or (GPIO.input(18) == True and flag == 1):
@@ -271,12 +285,12 @@ def main():
 
                 setVibration()
 
-                # Calculates loop runtime.
                 tock = time.clock()
                 runtime = tock - tick
                 print "Loop runtime: " + str(runtime) + "s"
                 print "FPS: " + str(int(1/runtime))
             else:
+                fadeOut()
                 pause()
 
     except KeyboardInterrupt:
