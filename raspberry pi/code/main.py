@@ -2,29 +2,31 @@
 
 """ 
 
+//////////////////////////////////////////////////////////////////////////////
+OpenVNAVI (Open Vibrotactile Navigation Aid for the Visually Impaired)
+Author: David Antón Sánchez
+License: GPLv3
+github.com/davidanton
+//////////////////////////////////////////////////////////////////////////////
+
 WORK IN PROGRESS 
 BETA(TM)
 
-Implement modes: 1: Max/min: (span shift) const*PWM16 (fix max, moving min); 2: Sensitivity, values
-for far-away objects are neglected.
-Make one motor vibrate a number of times to indicate the mode when the button is pressed.
-Implement image stabilization
-Get more FPS
 
-Things to try:
-"frame16.astype(np.uint8)" doesn't work for some reason, it would have been easier to  I used frame16.astype(int)
-If Asus image is not grayscale, convert by using cv2.CV_LOAD_IMAGE_GRAYSCALE
-Reads the 640x480 depth frame. OpenCV reads BGR by default, here it's loaded as grayscale.
-frame640 = cv2.imread("frame641.png", cv2.CV_LOAD_IMAGE_UNCHANGED)
+THINGS TO IMPLEMENT:
 
-frame16 = cv2.imread("frame16.png ", cv2.CV_LOAD_IMAGE_GRAYSCALE)
-print frame16
-print frame16.shape
-frame16 = frame16.reshape(8, 16)
-frame16 = np.asarray(frame16)
+- Implement modes: 
+1: Gain, increase/decrease.
+2: Threshold, values for far-away objects are neglected.
+- Make one motor vibrate a number of times to indicate the mode when the button 
+is pressed.
+- Implement image stabilization
+- Get more FPS
+- "frame16.astype(np.uint8)" doesn't work for some reason, it would have been 
+easier to use that and map from 8-bit to 12-bit without the need for setting a
+maxPWM. I used frame16.astype(int) and set maxPWM.
 
-
-NOTES: 
+NOTES FOR DOCUMENTATION: 
 
 Installation: 
 OpenNI1 + PyOpenNI -> PyOpenNI doesn't compile
@@ -32,7 +34,7 @@ OpenNI2 + primesense Python bindings -> I don't remember error
 OpenNI1 + OpenCV2 -> It works
 	Installed OpenNI Unstable 1.5.4.0 but the other versions seem to work also,
 	try with a stable version. 
-	OpenNI built following txt doc guide
+	OpenNI built following readme
 	OpenCV compiled from source -D WITH_OPENNI=YES
 
 Decide wether to install libraries on /usr/local/lib/python2.7/dist-packages, 
