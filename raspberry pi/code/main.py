@@ -2,49 +2,23 @@
 # -*- coding: utf-8 -*-
 
 """
-
 //////////////////////////////////////////////////////////////////////////////
+==============================================================================
 OpenVNAVI (Open Vibrotactile Navigation Aid for the Visually Impaired)
 Author: David Antón Sánchez
 License: GPLv3
 github.com/davidanton
+==============================================================================
 //////////////////////////////////////////////////////////////////////////////
-
-WORK IN PROGRESS
-BETA(TM)
-
-THINGS TO IMPLEMENT:
-
-- Crop image to delete therow of black pixels that appears on the left
-- Modes:
-1: Gain, increase/decrease.
-2: Threshold, values for far-away objects are neglected.
-- Image stabilization
-- Optimize for more FPS
-- "frame16.astype(np.uint8)" doesn't work for some reason, it would have been
-easier to use that and map from 8-bit to 12-bit without the need for setting a
-maxPWM. I used frame16.astype(int) and set maxPWM.
-
-NOTES FOR DOCUMENTATION:
-
-Installation:
-OpenNI1 + PyOpenNI -> PyOpenNI doesn't compile
-OpenNI2 + primesense Python bindings -> I don't remember error
-OpenNI1 + OpenCV2 -> It works
-    Installed OpenNI Unstable 1.5.4.0 but the other versions seem to work also,
-    try with a stable version.
-    OpenNI built following readme
-    OpenCV compiled from source -D WITH_OPENNI=YES
-
 """
 
 __author__ = "David Anton Sanchez"
 __license__ = "GPLv3"
 
 
+# ============================================================================
 # Imports
 # ============================================================================
-
 import cv2
 import numpy as np
 import sys
@@ -54,9 +28,9 @@ import RPi.GPIO as GPIO
 from PWM_driver import PWM
 
 
+# ============================================================================
 # Constants
 # ============================================================================
-
 """ Each device and channel is identified by an integer. The C++
 version of OpenCV defines some constants for the identifiers of
 certain devices and channels. However, these constants are not
@@ -77,11 +51,9 @@ CV_CAP_OPENNI_BGR_IMAGE = 5
 CV_CAP_OPENNI_GRAY_IMAGE = 6
 
 
+# ============================================================================
 # Definitions
 # ============================================================================
-
-# Debugging and test functions:
-
 def depthTest():
 
     """ Grabs frames from different channels, multiplies the output
@@ -94,14 +66,13 @@ def depthTest():
     values = 7
     testGain = 5
     maxChannel = 4
-
-    for x in range(0, values):
-        for y in range(0, maxChannel):
+    for i in range(0, values):
+        for j in range(0, maxChannel):
             capture.grab()
-            print "Retrieving channel " + str(y) + abc[x]
-            success, rawFrame = capture.retrieve(channel = y)
-            frame640y = testGain * int(x) * rawFrame
-            cv2.imwrite("test_frames/" + str(y) + abc[x] + ".png", frame640y)
+            print "Retrieving channel " + str(j) + abc[i]
+            success, rawFrame = capture.retrieve(channel = j)
+            frame640j = testGain * i * rawFrame
+            cv2.imwrite("test_frames/" + str(j) + abc[i] + ".png", frame640j)
 
 def sweepTest():
 
@@ -110,20 +81,21 @@ def sweepTest():
     minPWM = 300
     maxPWM = 3000
     step = 100
-
     for i in range(minPWM,maxPWM,step):
-        for j in range(0,8):
-            for k in range(0,16):
-                IC[j].setPWM(k, 0, i)
+        for row in range(0,8):
+            for col in range(0,16):
+                IC[row].setPWM(col, 0, i)
                 time.sleep(0.001)
-                print "IC: " + str(j) + " motor: " + str(k) + " PWM: " + str(i)
+                print ("IC: " + str(row) + " motor: " +
+                      str(col) + " PWM: " + str(i))
 
     for i in range(maxPWM,minPWM,-step):
-        for j in range(0,8):
-            for k in range(0,16):
-                IC[j].setPWM(k, 0, i)
+        for row in range(0,8):
+            for col in range(0,16):
+                IC[row].setPWM(col, 0, i)
                 time.sleep(0.001)
-                print "IC: " + str(j) + " motor: " + str(k) + " PWM: " + str(i)
+                print ("IC: " + str(row) + " motor: " +
+                      str(col) + " PWM: " + str(i))
 
 def strobeTest(row):
 
@@ -131,14 +103,10 @@ def strobeTest(row):
 
     minPWM = 300
     maxPWM = 3000
-
     IC[row].setAllPWM(0, minPWM)
     time.sleep (1)
     IC[row].setAllPWM(0, maxPWM)
     time.sleep (1)
-
-
-# Other functions:
 
 def fadeIn():
 
@@ -148,27 +116,25 @@ def fadeIn():
     minPWM = 300
     maxPWM = 1000
     step = 10
-
     for i in range(minPWM,maxPWM,step):
-        for j in range(0,8):
-            IC[j].setAllPWM(0, i)
+        for row in range(0,8):
+            IC[row].setAllPWM(0, i)
 
 def fadeOut():
 
-    """ Ramps from current to low vibration values for a smooth
+    """ Ramps from medium to low vibration values for a smooth
     transition. """
 
     minPWM = 300
     maxPWM = 1000
     step = 10
-
     for i in range(maxPWM, minPWM, -step):
-        for j in range(0,8):
-            IC[j].setAllPWM(0, i)
+        for row in range(0,8):
+            IC[row].setAllPWM(0, i)
 
 def beep(number, t):
 
-    """ Simple buzzer beep. """
+    """ Simple buzzer beep. Takes number of beeps and the duration. """
 
     GPIO.setwarnings(False)
     GPIO.setup(12, GPIO.OUT)
@@ -183,8 +149,9 @@ def pause():
 
     """ Pause function. """
 
-    for i in range(0, 8):
-        IC[i].setAllPWM(0, 0)
+    fadeOut()
+    for row in range(0, 8):
+        IC[row].setAllPWM(0, 0)
     print "System paused by the user."
     time.sleep(0.5)
     beep(1, 0.2)
@@ -228,6 +195,7 @@ def setVibration():
         # print "\n"
 
 
+# ============================================================================
 # Main function
 # ============================================================================
 
@@ -237,7 +205,7 @@ def main():
         # Initialization of PWM drivers. PWM(0x40, debug=True) for debugging.
         global IC
         IC = []
-        freq = 1000 #PWM frequency [Hz].
+        freq = 490 
         for i in range(0,8):
             IC.append(PWM(0x40+i))
             IC[i].setPWMFreq(freq)
@@ -267,22 +235,18 @@ def main():
         print "System ready, press switch to continue..."
         beep(1, 0.2)
         GPIO.wait_for_edge(18, GPIO.RISING)
-
         fadeIn()
 
         while True:
-            if (GPIO.input(18) == False) or (GPIO.input(18) == True and flag == 1):
+            if ((GPIO.input(18) == False) or
+                (GPIO.input(18) == True and flag == 1)):
                 flag = 0
                 tick = time.clock()
 
                 # depthTest()
-
                 # sweepTest()
-
                 # strobeTest(0)
-
                 # getFrame()
-
                 setVibration()
 
                 tock = time.clock()
@@ -290,7 +254,6 @@ def main():
                 print "Loop runtime: " + str(runtime) + "s"
                 print "FPS: " + str(int(1/runtime))
             else:
-                fadeOut()
                 pause()
 
     except KeyboardInterrupt:
@@ -301,7 +264,6 @@ def main():
 
     finally:
         print "Done"
-
 
 if __name__ == "__main__":
     main()

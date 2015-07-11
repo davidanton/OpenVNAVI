@@ -1,0 +1,12 @@
+
+*.bak
+*.bck
+*.raw
+*.log
+*.dcm
+*.bash_profile
+*.DS_Store
+*.FCStd1
+*.kicad_pcb-bak
+*autosave*
+*cache*
