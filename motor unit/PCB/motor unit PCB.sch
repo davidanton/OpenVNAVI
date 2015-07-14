@@ -28,8 +28,7 @@ LIBS:opto
 LIBS:atmel
 LIBS:contrib
 LIBS:valves
-LIBS:component library
-LIBS:motor unit PCB-cache
+LIBS:OpenVNAVI component library
 EELAYER 25 0
 EELAYER END
 $Descr A4 11693 8268
@@ -236,8 +235,6 @@ Wire Notes Line
 	1050 1000 1050 3800
 Wire Notes Line
 	4350 3800 4350 1000
-Text Notes 4675 1125 0    139  ~ 0
-Notes
 Wire Wire Line
 	1925 2650 1925 2850
 Wire Wire Line

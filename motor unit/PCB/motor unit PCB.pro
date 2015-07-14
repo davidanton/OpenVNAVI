@@ -1,9 +1,31 @@
-update=So 17 Mai 2015 13:52:58 CEST
+update=So 12 Jul 2015 14:22:13 CEST
 version=1
 last_client=kicad
 [cvpcb]
 version=1
 NetIExt=net
+[general]
+version=1
+[pcbnew]
+version=1
+PageLayoutDescrFile=
+LastNetListRead=
+UseCmpFile=1
+PadDrill=0.6
+PadDrillOvalY=0.6
+PadSizeH=1.5
+PadSizeV=1.5
+PcbTextSizeV=1.5
+PcbTextSizeH=1.5
+PcbTextThickness=0.3
+ModuleTextSizeV=1
+ModuleTextSizeH=1
+ModuleTextSizeThickness=0.15
+SolderMaskClearance=0
+SolderMaskMinWidth=0
+DrawSegmentWidth=0.2
+BoardOutlineThickness=0.09999999999999999
+ModuleOutlineThickness=0.15
 [eeschema]
 version=1
 LibDir=
@@ -38,26 +60,4 @@ LibName27=opto
 LibName28=atmel
 LibName29=contrib
 LibName30=valves
-LibName31=libraries/component library
-[general]
-version=1
-[pcbnew]
-version=1
-PageLayoutDescrFile=
-LastNetListRead=
-UseCmpFile=1
-PadDrill=0.6
-PadDrillOvalY=0.6
-PadSizeH=1.5
-PadSizeV=1.5
-PcbTextSizeV=1.5
-PcbTextSizeH=1.5
-PcbTextThickness=0.3
-ModuleTextSizeV=1
-ModuleTextSizeH=1
-ModuleTextSizeThickness=0.15
-SolderMaskClearance=0
-SolderMaskMinWidth=0
-DrawSegmentWidth=0.2
-BoardOutlineThickness=0.09999999999999999
-ModuleOutlineThickness=0.15
+LibName31=/mnt/hgfs/David/Dropbox/TFG/OpenVNAVI/kicad libraries/OpenVNAVI component library
