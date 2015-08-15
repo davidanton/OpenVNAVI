@@ -26,6 +26,8 @@ import os
 import time
 import RPi.GPIO as GPIO
 from PWM_driver import PWM
+from flask import Flask, jsonify, render_template, request
+import multiprocessing as mp
 
 
 # ============================================================================
@@ -176,12 +178,12 @@ def getFrame():
     # print frame16
     return frame16
 
-def setVibration():
+def setVibration(frame = getFrame()):
 
     """ Sets PWM values to each vibration motor unit. """
 
     mappingFunction = 8 # Mapping of grayscale values to PWM values.
-    PWM16 = mappingFunction * getFrame()
+    PWM16 = mappingFunction * frame
     maxPWM = 3060
     for row in range(0,8):
         for col in range (0,16):
@@ -198,10 +200,12 @@ def setVibration():
 
 
 # ============================================================================
-# Main function
+# Vibration renderer process
 # ============================================================================
 
-def main():
+def rendererProcess(queue):
+
+    """ Entry point for the renderer process. """
 
     try:
         # Initialization of PWM drivers. PWM(0x40, debug=True) for debugging.
@@ -249,7 +253,15 @@ def main():
                 # sweepTest()
                 # strobeTest(0)
                 # getFrame()
-                setVibration()
+                if not queue.empty():
+                    requestJson = queue.get()
+                    mode = requestJson["mode"]
+
+                    if mode == "web":
+                        frame = np.array(requestJson["motors"])
+                        setVibration(frame)
+                    elif mode == "kinect":
+                        setVibration()
 
                 tock = time.clock()
                 runtime = tock - tick
@@ -266,6 +278,59 @@ def main():
 
     finally:
         print "Done"
+
+
+# ============================================================================
+# Web server process
+# ============================================================================
+webServer = Flask(__name__)
+webServer.debug = True
+
+
+@webServer.route("/")
+def serve():
+    """ Web root. """
+    return render_template('index.html')
+
+
+@webServer.route('/_send_motors', methods=["PUT", "POST"])
+def send_motors():
+
+    """ Handles AJAX requests. """
+
+    requestJson = request.get_json()
+    webServer.extensions['queue'].put(requestJson)
+
+    retVal = {"message": "hi from Flask"}
+    return jsonify(**retVal)
+
+
+def webserverProcess(queue):
+
+    """ Entry point for the web server process. """
+
+    if not hasattr(webServer, 'extensions'):
+        webServer.extensions = {}
+    webServer.extensions['queue'] = queue
+
+    webServer.run(use_reloader=False)
+
+# ============================================================================
+# Main function
+# ============================================================================
+def main():
+
+    # for inter-process communication
+    q = mp.Queue()
+
+    # web server process
+    p_webserver = mp.Process(target=webserverProcess, args=(q, ))
+    p_webserver.start()
+
+    # jacket renderer process
+    p_renderer = mp.Process(target=rendererProcess, args=(q, ))
+    p_renderer.start()
+
 
 if __name__ == "__main__":
     main()
