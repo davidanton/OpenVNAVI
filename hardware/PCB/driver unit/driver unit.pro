@@ -1,4 +1,4 @@
-update=So 12 Jul 2015 14:24:38 CEST
+update=Di 11 Aug 2015 22:16:22 CEST
 version=1
 last_client=kicad
 [pcbnew]
@@ -27,7 +27,7 @@ NetIExt=net
 version=1
 [eeschema]
 version=1
-LibDir=
+LibDir=../kicad libraries
 [eeschema/libraries]
 LibName1=power
 LibName2=device
@@ -60,3 +60,13 @@ LibName28=atmel
 LibName29=contrib
 LibName30=valves
 LibName31=/mnt/hgfs/David/Dropbox/TFG/OpenVNAVI/kicad libraries/OpenVNAVI component library
+[schematic_editor]
+version=1
+PageLayoutDescrFile=
+PlotDirectoryName=
+SubpartIdSeparator=0
+SubpartFirstId=65
+NetFmtName=
+SpiceForceRefPrefix=0
+SpiceUseNetNumbers=0
+LabSize=60

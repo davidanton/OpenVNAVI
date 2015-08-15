@@ -187,8 +187,10 @@ def setVibration():
         for col in range (0,16):
             if PWM16[row,col] > maxPWM:
                 PWM16[row,col] = maxPWM
+                IC[row].setPWM(col,0,(PWM16[row,col]))
             elif PWM16[row,col] == 0:
                 PWM16[row,col] = maxPWM
+                IC[row].setPWM(col,0,(PWM16[row,col]))
             else:
                 IC[row].setPWM(col,0,(PWM16[row,col]))
                 # print (PWM16[row,col]),
@@ -205,7 +207,7 @@ def main():
         # Initialization of PWM drivers. PWM(0x40, debug=True) for debugging.
         global IC
         IC = []
-        freq = 490 
+        freq = 490
         for i in range(0,8):
             IC.append(PWM(0x40+i))
             IC[i].setPWMFreq(freq)
