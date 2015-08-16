@@ -170,7 +170,12 @@ def getFrame():
     capture.grab()
     success, rawFrame = capture.retrieve(channel = channel)
     frame640 = gain * rawFrame
-    frame16 = cv2.resize(frame640, (16, 8))
+    # Black border removal
+    height = 480
+    width = 640
+    frame640_crop = frame640[15:height-5, 12:width-22]
+
+    frame16 = cv2.resize(frame640_crop, (16, 8))
     frame16 = frame16.astype(int)
     # For debugging
     # cv2.imwrite("frame640.png", frame640)
