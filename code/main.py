@@ -262,6 +262,8 @@ def rendererProcess(queue):
                         setVibration(frame)
                     elif mode == "kinect":
                         setVibration()
+                else:
+                    setVibration()
 
                 tock = time.clock()
                 runtime = tock - tick
