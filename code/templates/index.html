@@ -2,6 +2,7 @@
 <head>
 <title>OpenVNAVI Controller</title>
 <script type=text/javascript src="{{url_for('static', filename='jquery-1.11.3.min.js') }}"></script>
+<script type=text/javascript src="{{url_for('static', filename='png.js') }}"></script>
 </head>
 
 <body>
@@ -25,6 +26,22 @@
     <button id="setAllButton">Set</button>
 </div>
 
+<h3>PNG input</h3>
+<div>
+    <input type="file" id="file">
+</div>
+
+<canvas width="160" height="80" id="outCanvas"></canvas>
+
+
+<!-- namespace -->
+<script type=text/javascript>
+    $(function() {
+        window.vnavi = {};
+    });
+</script>
+
+<!-- motor text array -->
 <script type=text/javascript>
   $(function() {
     // global parameters
@@ -35,6 +52,9 @@
     // create text boxes for motor input
     var inputContainer = $('div#motorsContainer');
     var motorInputs = [];
+
+    // expose variables to namespace
+    window.vnavi.motorInputs = motorInputs;
 
     for (var row = 0; row < rowCount; row++)
     {
@@ -104,6 +124,55 @@
 
   });
 </script>
+
+
+<!-- PNG input -->
+<script type=text/javascript>
+    var reader = new FileReader();
+
+    reader.onload = function(event){
+        var bytes = event.target.result;
+        var pngReader = new PNGReader(bytes);
+        pngReader.parse(function(err, png){
+            if (err) throw err;
+            // console.log('image is <' + png.width + ',' + png.height +'>');
+            // console.log(png);
+            drawOnCanvas(png);
+        });
+    };
+
+    var file = document.getElementById('file');
+    file.onchange = function(event){
+        reader.readAsArrayBuffer(file.files[0]);
+    }
+
+    var drawOnCanvas = function(png){
+        var i = 0;
+        var width = 16
+        var height = 8
+
+        var outCanvas = document.getElementById('outCanvas');
+        var zoom = outCanvas.width / width;
+        var outCtx = outCanvas.getContext('2d');
+        
+        for (var y = 0; y < height; y++){
+            for (var x = 0; x < width; x++){
+                var colors = png.getPixel(x, y);
+                var r = colors[0];
+                var g = colors[1];
+                var b = colors[2];
+                var a = colors[3];
+                window.vnavi.motorInputs[y * width + x].val(colors[0]);
+                outCtx.fillStyle = "rgba("+r+","+g+","+b+","+(a/255)+")";
+                outCtx.fillRect(x*zoom,y*zoom,zoom,zoom);
+            }
+        }
+
+
+    }
+
+</script>
+
 
 </body>
 
