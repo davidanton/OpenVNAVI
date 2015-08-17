@@ -21,9 +21,16 @@
 <div id="motorsContainer"></div>
 <button id="sendButton">Send</button>
 
+<h3>Manipulate</h3>
 <div>
     Set all: <input id="setAllInput" type="text" size = "3"/>
     <button id="setAllButton">Set</button>
+</div>
+
+<div>
+    Find: <input id="findInput" type="text" size = "3"/>
+    Replace:  <input id="replaceInput" type="text" size = "3"/>
+    <button id="replaceButton">Replace</button>
 </div>
 
 <h3>PNG input</h3>
@@ -111,20 +118,39 @@
         return false;
     
     });
-
-    $('#setAllButton').bind('click', function() {
-        var inputValue = $("#setAllInput").val();
-        $.each(motorInputs, function(index, motorInput) {
-            motorInput.val(inputValue);
-        });
-
-        // end bind()
-        return false;
-    });
-
   });
 </script>
 
+<!-- manipulate -->
+<script type="text/javascript">
+    $(function() {
+       
+        $('#setAllButton').bind('click', function() {
+            var inputValue = $("#setAllInput").val();
+            $.each(window.vnavi.motorInputs, function(index, motorInput) {
+                motorInput.val(inputValue);
+            });
+
+            // end bind()
+            return false;
+        });
+
+        $('#replaceButton').bind('click', function() {
+            var findValue = $("#findInput").val();
+            var replaceValue = $("#replaceInput").val();
+            $.each(window.vnavi.motorInputs, function(index, motorInput) {
+                if (motorInput.val() == findValue)
+                {
+                    motorInput.val(replaceValue);
+                }
+            });
+
+            // end bind()
+            return false;
+        });
+
+    });
+</script>
 
 <!-- PNG input -->
 <script type=text/javascript>
