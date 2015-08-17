@@ -200,6 +200,38 @@ def setVibration(frame = getFrame()):
                 # print (PWM16[row,col]),
         # print "\n"
 
+def initialization():
+
+        """ Initializes the sensor, PWM drivers and GPIO """
+
+    # Initialization of PWM drivers. PWM(0x40, debug=True) for debugging.
+    global IC
+    IC = []
+    freq = 490
+    for i in range(0,8):
+        IC.append(PWM(0x40+i))
+        IC[i].setPWMFreq(freq)
+
+    # Initialization of the sensor.
+    global sensor
+    sensor = CV_CAP_OPENNI_ASUS
+    global channel
+    channel = 3
+    global gain
+    gain = 5
+    global capture
+    capture = cv2.VideoCapture(sensor)
+    capture.open(sensor)
+    while not capture.isOpened():
+        print "Couldn't open sensor. Is it connected?"
+        time.sleep(100)
+    print "Sensor opened successfully"
+
+    # GPIO initialization.
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    sw1 = GPIO.input(18) # Input NO switch.
+    flag = 0 # Flag for start/stop button.
 
 # ============================================================================
 # Vibration renderer process
@@ -210,35 +242,6 @@ def rendererProcess(queue):
     """ Entry point for the renderer process. """
 
     try:
-        # Initialization of PWM drivers. PWM(0x40, debug=True) for debugging.
-        global IC
-        IC = []
-        freq = 490
-        for i in range(0,8):
-            IC.append(PWM(0x40+i))
-            IC[i].setPWMFreq(freq)
-
-        # Initialization of the sensor.
-        global sensor
-        sensor = CV_CAP_OPENNI_ASUS
-        global channel
-        channel = 3
-        global gain
-        gain = 5
-        global capture
-        capture = cv2.VideoCapture(sensor)
-        capture.open(sensor)
-        while not capture.isOpened():
-            print "Couldn't open sensor. Is it connected?"
-            time.sleep(100)
-        print "Sensor opened successfully"
-
-        # GPIO initialization.
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        sw1 = GPIO.input(18) # Input NO switch.
-        flag = 0 # Flag for start/stop button.
-
         # Waits for sw1 to be pressed.
         print "System ready, press switch to continue..."
         beep(1, 0.2)
@@ -323,6 +326,8 @@ def webserverProcess(queue):
 # Main function
 # ============================================================================
 def main():
+
+    initialization()
 
     # for inter-process communication
     q = mp.Queue()
