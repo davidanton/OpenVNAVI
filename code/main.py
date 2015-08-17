@@ -170,7 +170,8 @@ def getFrame():
     capture.grab()
     success, rawFrame = capture.retrieve(channel = channel)
     frame640 = gain * rawFrame
-    frame16 = cv2.resize(frame640, (16, 8))
+    frame640_crop = frame640[15:475, 12:618] # Black border removal
+    frame16 = cv2.resize(frame640_crop, (16, 8))
     frame16 = frame16.astype(int)
     # For debugging
     # cv2.imwrite("frame640.png", frame640)
@@ -184,14 +185,15 @@ def setVibration(frame = getFrame()):
 
     mappingFunction = 8 # Mapping of grayscale values to PWM values.
     PWM16 = mappingFunction * frame
-    maxPWM = 3060
+    maxPWM = 3060 # Voltage safety limit
+    minPWM = 1 # Distance detection threshold
     for row in range(0,8):
         for col in range (0,16):
-            if PWM16[row,col] > maxPWM:
+            if (PWM16[row,col] >= maxPWM) or (PWM16[row,col] == 0):
                 PWM16[row,col] = maxPWM
                 IC[row].setPWM(col,0,(PWM16[row,col]))
-            elif PWM16[row,col] == 0:
-                PWM16[row,col] = maxPWM
+            elif PWM16[row,col] <= minPWM:
+                PWM16[row,col] = 0
                 IC[row].setPWM(col,0,(PWM16[row,col]))
             else:
                 IC[row].setPWM(col,0,(PWM16[row,col]))
