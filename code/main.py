@@ -280,9 +280,10 @@ def rendererProcess(webQueue, ipcQueue):
     shouldTerminate = False
 
     global sourceMode
-    sourceMode = "kinect"
 
-    PWMFromWeb = None
+    # default transient variables
+    sourceMode = "kinect"
+    PWMFromWeb = np.ones((8, 16)) * 0
 
     while not shouldTerminate:
 
@@ -295,16 +296,14 @@ def rendererProcess(webQueue, ipcQueue):
         if not webQueue.empty():
             requestJson = webQueue.get()
 
-            # ensures that all necessary keys are there
-            requestJson.setdefault("mode", "web")
-            requestJson.setdefault("motors", np.ones((8, 16)) * 0)
+            if "motors" in requestJson:
+                PWMFromWeb = np.array(requestJson["motors"])
 
-            PWMFromWeb = np.array(requestJson["motors"])
-
-            nextMode = requestJson["mode"]
-            if nextMode is not sourceMode:
-                print "Switching to mode %s" % nextMode
-                sourceMode = nextMode
+            if "mode" in requestJson:
+                nextMode = requestJson["mode"]
+                if nextMode is not sourceMode:
+                    print "Switching to mode %s" % nextMode
+                    sourceMode = nextMode
 
         # process inter-process message
         if not ipcQueue.empty():
