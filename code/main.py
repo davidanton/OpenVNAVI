@@ -28,6 +28,7 @@ import RPi.GPIO as GPIO
 from PWM_driver import PWM
 from flask import Flask, jsonify, render_template, request
 import multiprocessing as mp
+import timeit
 
 
 # ============================================================================
@@ -230,6 +231,13 @@ def rendererProcess(webQueue, ipcQueue):
         time.sleep(100)
     print "Sensor opened successfully"
 
+    # camera benchmarking
+    getFrame()
+    repCount = 50
+    print "Benchmarking camera for %d frames" % repCount
+    callTime = timeit.timeit("getFrame()", setup="from __main__ import getFrame", number = repCount)
+    print "getFrame() FPS: %.3f" % (repCount / callTime)
+
     # GPIO initialization.
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
@@ -246,12 +254,11 @@ def rendererProcess(webQueue, ipcQueue):
 
     global sourceMode
     sourceMode = "kinect"
-    
+
     while not shouldTerminate:
         if ((GPIO.input(18) == False) or
             (GPIO.input(18) == True and flag == 1)):
             flag = 0
-            tick = time.clock()
 
             # depthTest()
             # sweepTest()
@@ -269,12 +276,6 @@ def rendererProcess(webQueue, ipcQueue):
                 setVibration()
                 print "kinect mode"
             
-
-            tock = time.clock()
-            runtime = tock - tick
-            print "Loop runtime: " + str(runtime) + "s"
-            print "FPS: " + str(int(1/runtime))
-
             if not ipcQueue.empty():
                 ipcCommand = ipcQueue.get()
                 if ipcCommand == "terminate":
