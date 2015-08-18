@@ -239,11 +239,11 @@ def rendererProcess(webQueue, ipcQueue):
     print "Sensor opened successfully"
 
     # camera benchmarking
-    getFrame()
-    repCount = 50
-    print "Benchmarking camera for %d frames" % repCount
-    callTime = timeit.timeit("getFrame()", setup="from __main__ import getFrame", number = repCount)
-    print "getFrame() FPS: %.3f" % (repCount / callTime)
+    # getFrame()
+    # repCount = 50
+    # print "Benchmarking camera for %d frames" % repCount
+    # callTime = timeit.timeit("getFrame()", setup="from __main__ import getFrame", number = repCount)
+    # print "getFrame() FPS: %.3f" % (repCount / callTime)
 
     # GPIO initialization.
     GPIO.setmode(GPIO.BCM)
