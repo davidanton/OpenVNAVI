@@ -170,8 +170,7 @@ def getFrame():
     capture.grab()
     success, rawFrame = capture.retrieve(channel = channel)
     frame640 = gain * rawFrame
-    frame640_crop = frame640[15:475, 12:618] # Black border removal
-    frame16 = cv2.resize(frame640_crop, (16, 8))
+    frame16 = cv2.resize(frame640, (16, 8))
     frame16 = frame16.astype(int)
     # For debugging
     # cv2.imwrite("frame640.png", frame640)
@@ -179,30 +178,34 @@ def getFrame():
     # print frame16
     return frame16
 
-def setVibration(frame = getFrame()):
+def setVibration(frame = None):
 
     """ Sets PWM values to each vibration motor unit. """
 
+    if frame is None:
+        frame = getFrame()
     mappingFunction = 8 # Mapping of grayscale values to PWM values.
     PWM16 = mappingFunction * frame
-    maxPWM = 3060 # Voltage safety limit
-    minPWM = 1 # Distance detection threshold
+    maxPWM = 3060
     for row in range(0,8):
         for col in range (0,16):
-            if (PWM16[row,col] >= maxPWM) or (PWM16[row,col] == 0):
+            if PWM16[row,col] > maxPWM:
                 PWM16[row,col] = maxPWM
-                IC[row].setPWM(col,0,(PWM16[row,col]))
-            elif PWM16[row,col] <= minPWM:
-                PWM16[row,col] = 0
-                IC[row].setPWM(col,0,(PWM16[row,col]))
+            elif PWM16[row,col] == 0:
+                PWM16[row,col] = maxPWM
             else:
                 IC[row].setPWM(col,0,(PWM16[row,col]))
                 # print (PWM16[row,col]),
         # print "\n"
 
-def initialization():
 
-        """ Initializes the sensor, PWM drivers and GPIO """
+# ============================================================================
+# Vibration renderer process
+# ============================================================================
+
+def rendererProcess(webQueue, ipcQueue):
+
+    """ Entry point for the renderer process. """
 
     # Initialization of PWM drivers. PWM(0x40, debug=True) for debugging.
     global IC
@@ -233,58 +236,59 @@ def initialization():
     sw1 = GPIO.input(18) # Input NO switch.
     flag = 0 # Flag for start/stop button.
 
-# ============================================================================
-# Vibration renderer process
-# ============================================================================
+    # Waits for sw1 to be pressed.
+    print "System ready, press switch to continue..."
+    beep(1, 0.2)
+    GPIO.wait_for_edge(18, GPIO.RISING)
+    fadeIn()
 
-def rendererProcess(queue):
+    shouldTerminate = False
 
-    """ Entry point for the renderer process. """
+    global sourceMode
+    sourceMode = "kinect"
 
-    try:
-        # Waits for sw1 to be pressed.
-        print "System ready, press switch to continue..."
-        beep(1, 0.2)
-        GPIO.wait_for_edge(18, GPIO.RISING)
-        fadeIn()
+    while not shouldTerminate:
+        if ((GPIO.input(18) == False) or
+            (GPIO.input(18) == True and flag == 1)):
+            flag = 0
+            tick = time.clock()
 
-        while True:
-            if ((GPIO.input(18) == False) or
-                (GPIO.input(18) == True and flag == 1)):
-                flag = 0
-                tick = time.clock()
+            # depthTest()
+            # sweepTest()
+            # strobeTest(0)
+            # getFrame()
+            if not webQueue.empty():
+                requestJson = webQueue.get()
+                sourceMode = requestJson["mode"]
 
-                # depthTest()
-                # sweepTest()
-                # strobeTest(0)
-                # getFrame()
-                if not queue.empty():
-                    requestJson = queue.get()
-                    mode = requestJson["mode"]
+            if sourceMode == "web":
+                frame = np.array(requestJson["motors"])
+                setVibration(frame)
+                print "web mode"
+            elif sourceMode == "kinect":
+                setVibration()
+                print "kinect mode"
 
-                    if mode == "web":
-                        frame = np.array(requestJson["motors"])
-                        setVibration(frame)
-                    elif mode == "kinect":
-                        setVibration()
-                else:
-                    setVibration()
 
-                tock = time.clock()
-                runtime = tock - tick
-                print "Loop runtime: " + str(runtime) + "s"
-                print "FPS: " + str(int(1/runtime))
-            else:
-                pause()
+            tock = time.clock()
+            runtime = tock - tick
+            print "Loop runtime: " + str(runtime) + "s"
+            print "FPS: " + str(int(1/runtime))
 
-    except KeyboardInterrupt:
-        GPIO.cleanup
-        for i in range(0, 8):
-            IC[i].setAllPWM(0, 0)
-        print "Shutdown requested. \nExiting..."
+            if not ipcQueue.empty():
+                ipcCommand = ipcQueue.get()
+                if ipcCommand == "terminate":
+                    shouldTerminate = True
 
-    finally:
-        print "Done"
+        else:
+            pause()
+
+    print "[Renderer] shutdown requested"
+    GPIO.cleanup()
+    for i in range(0, 8):
+        IC[i].setAllPWM(0, 0)
+
+    print "[Renderer] successfully shutdown"
 
 
 # ============================================================================
@@ -312,33 +316,48 @@ def send_motors():
     return jsonify(**retVal)
 
 
-def webserverProcess(queue):
+def webserverProcess(webQueue, ipcQueue):
 
     """ Entry point for the web server process. """
-
     if not hasattr(webServer, 'extensions'):
         webServer.extensions = {}
-    webServer.extensions['queue'] = queue
+    webServer.extensions['queue'] = webQueue
 
-    webServer.run(use_reloader=False)
+    webServer.run(host='0.0.0.0', use_reloader=False)
+
+    while True:
+        ipcCommand = ipcQueue.get()
+        if ipcCommand == "terminate":
+            print "[WebServer] shutdown requested"
+            return
+
 
 # ============================================================================
 # Main function
 # ============================================================================
 def main():
 
-    initialization()
-
     # for inter-process communication
-    q = mp.Queue()
+    webQueue = mp.Queue()
+    ipcQueue = mp.Queue()
 
     # web server process
-    p_webserver = mp.Process(target=webserverProcess, args=(q, ))
+    p_webserver = mp.Process(target=webserverProcess, args=(webQueue, ipcQueue))
     p_webserver.start()
 
     # jacket renderer process
-    p_renderer = mp.Process(target=rendererProcess, args=(q, ))
+    p_renderer = mp.Process(target=rendererProcess, args=(webQueue, ipcQueue))
     p_renderer.start()
+
+    workers = [p_webserver, p_renderer]
+    try:
+        for worker in workers:
+            worker.join()
+    except KeyboardInterrupt:
+        print "[Main] received Ctrl + C"
+        ipcQueue.put("terminate")
+        for worker in workers:
+            worker.join()
 
 
 if __name__ == "__main__":
