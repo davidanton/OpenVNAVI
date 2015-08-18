@@ -28,6 +28,7 @@ import RPi.GPIO as GPIO
 from PWM_driver import PWM
 from flask import Flask, jsonify, render_template, request
 import multiprocessing as mp
+import timeit
 
 
 # ============================================================================
@@ -51,6 +52,11 @@ CV_CAP_OPENNI_VALID_DEPTH_MASK = 4 # CV_8UC1
 # Channels of an OpenNI-compatible RGB image generator.
 CV_CAP_OPENNI_BGR_IMAGE = 5
 CV_CAP_OPENNI_GRAY_IMAGE = 6
+
+# ============================================================================
+# Global variable
+# ============================================================================
+isMotorOn = False # Flag for start/stop button.
 
 
 # ============================================================================
@@ -150,6 +156,7 @@ def beep(number, t):
 def pause():
 
     """ Pause function. """
+    global isMotorOn
 
     fadeOut()
     for row in range(0, 8):
@@ -158,9 +165,9 @@ def pause():
     time.sleep(0.5)
     beep(1, 0.2)
     print "System ready, press switch to continue..."
-    flag = 1
     GPIO.wait_for_edge(18, GPIO.RISING)
     fadeIn()
+    isMotorOn = True
 
 def getFrame():
 
@@ -206,6 +213,7 @@ def setVibration(frame = None):
 def rendererProcess(webQueue, ipcQueue):
 
     """ Entry point for the renderer process. """
+    global isMotorOn
 
     # Initialization of PWM drivers. PWM(0x40, debug=True) for debugging.
     global IC
@@ -230,17 +238,24 @@ def rendererProcess(webQueue, ipcQueue):
         time.sleep(100)
     print "Sensor opened successfully"
 
+    # camera benchmarking
+    # getFrame()
+    # repCount = 50
+    # print "Benchmarking camera for %d frames" % repCount
+    # callTime = timeit.timeit("getFrame()", setup="from __main__ import getFrame", number = repCount)
+    # print "getFrame() FPS: %.3f" % (repCount / callTime)
+
     # GPIO initialization.
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
     sw1 = GPIO.input(18) # Input NO switch.
-    flag = 0 # Flag for start/stop button.
 
     # Waits for sw1 to be pressed.
     print "System ready, press switch to continue..."
     beep(1, 0.2)
     GPIO.wait_for_edge(18, GPIO.RISING)
     fadeIn()
+    isMotorOn = True
 
     shouldTerminate = False
 
@@ -248,40 +263,30 @@ def rendererProcess(webQueue, ipcQueue):
     sourceMode = "kinect"
 
     while not shouldTerminate:
-        if ((GPIO.input(18) == False) or
-            (GPIO.input(18) == True and flag == 1)):
-            flag = 0
-            tick = time.clock()
-
-            # depthTest()
-            # sweepTest()
-            # strobeTest(0)
-            # getFrame()
-            if not webQueue.empty():
-                requestJson = webQueue.get()
-                sourceMode = requestJson["mode"]
-
-            if sourceMode == "web":
-                frame = np.array(requestJson["motors"])
-                setVibration(frame)
-                print "web mode"
-            elif sourceMode == "kinect":
-                setVibration()
-                print "kinect mode"
-
-
-            tock = time.clock()
-            runtime = tock - tick
-            print "Loop runtime: " + str(runtime) + "s"
-            print "FPS: " + str(int(1/runtime))
-
-            if not ipcQueue.empty():
-                ipcCommand = ipcQueue.get()
-                if ipcCommand == "terminate":
-                    shouldTerminate = True
-
-        else:
+        gpioValue = GPIO.input(18)
+        if ((gpioValue == True) and (isMotorOn == True)):
             pause()
+
+        # depthTest()
+        # sweepTest()
+        # strobeTest(0)
+        # getFrame()
+        if not webQueue.empty():
+            requestJson = webQueue.get()
+            nextMode = requestJson["mode"]
+            if nextMode is not sourceMode:
+                print "Switching to mode %s" % nextMode
+
+        if sourceMode == "web":
+            frame = np.array(requestJson["motors"])
+            setVibration(frame)
+        elif sourceMode == "kinect":
+            setVibration()
+
+        if not ipcQueue.empty():
+            ipcCommand = ipcQueue.get()
+            if ipcCommand == "terminate":
+                shouldTerminate = True
 
     print "[Renderer] shutdown requested"
     GPIO.cleanup()
