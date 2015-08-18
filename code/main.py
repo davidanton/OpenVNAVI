@@ -57,6 +57,13 @@ CV_CAP_OPENNI_GRAY_IMAGE = 6
 # Global variable
 # ============================================================================
 isMotorOn = False # Flag for start/stop button.
+sourceMode = "kinect"  # Data source "kinect" or "web"
+
+
+maxPWM = 3000  # TODO: determine proper max
+minPWM = 20  # TODO: determine proper min
+farDepth = 0  # TODO: determine proper max
+nearDepth = 255  # TODO: determine proper min
 
 
 # ============================================================================
@@ -185,25 +192,38 @@ def getFrame():
     # print frame16
     return frame16
 
-def setVibration(frame = None):
 
-    """ Sets PWM values to each vibration motor unit. """
+def preprocessKinectDepth(frame):
+    
+    # For Kinect, image that is nearer than the near plane is set to 0
+    # We need to set to maximum
+    frame[frame == 0] = 255
 
-    if frame is None:
-        frame = getFrame()
-    mappingFunction = 8 # Mapping of grayscale values to PWM values.
-    PWM16 = mappingFunction * frame
-    maxPWM = 3060
+    # ignore stuff that are faraway
+    frame[frame < farDepth] = farDepth
+
+    return frame
+
+
+def depthToPWM(frame):
+    assert maxPWM > minPWM
+    assert nearDepth > farDepth
+    
+    scaleFactor = (maxPWM - minPWM) / (nearDepth - farDepth)
+    PWM16 = scaleFactor * frame # TODO: allow web to chang the mapping function
+    return PWM16
+
+
+def setVibrationFromPWM(PWM16):
+
+    # cap max PWM to prevent motor from exploding
+    PWM16[PWM16 > maxPWM] = maxPWM
+
+    # set the motor
     for row in range(0,8):
         for col in range (0,16):
-            if PWM16[row,col] > maxPWM:
-                PWM16[row,col] = maxPWM
-            elif PWM16[row,col] == 0:
-                PWM16[row,col] = maxPWM
-            else:
-                IC[row].setPWM(col,0,(PWM16[row,col]))
-                # print (PWM16[row,col]),
-        # print "\n"
+            IC[row].setPWM(col,0,(PWM16[row,col]))
+
 
 
 # ============================================================================
@@ -262,31 +282,51 @@ def rendererProcess(webQueue, ipcQueue):
     global sourceMode
     sourceMode = "kinect"
 
+    PWMFromWeb = None
+
     while not shouldTerminate:
+
+        # check hardware switch
         gpioValue = GPIO.input(18)
         if ((gpioValue == True) and (isMotorOn == True)):
             pause()
 
-        # depthTest()
-        # sweepTest()
-        # strobeTest(0)
-        # getFrame()
+        # process web server message
         if not webQueue.empty():
             requestJson = webQueue.get()
+
+            # ensures that all necessary keys are there
+            requestJson.setdefault("mode", "web")
+            requestJson.setdefault("motors", np.ones((8, 16)) * 0)
+
+            PWMFromWeb = np.array(requestJson["motors"])
+
             nextMode = requestJson["mode"]
             if nextMode is not sourceMode:
                 print "Switching to mode %s" % nextMode
+                sourceMode = nextMode
 
-        if sourceMode == "web":
-            frame = np.array(requestJson["motors"])
-            setVibration(frame)
-        elif sourceMode == "kinect":
-            setVibration()
-        
+        # process inter-process message
         if not ipcQueue.empty():
             ipcCommand = ipcQueue.get()
             if ipcCommand == "terminate":
                 shouldTerminate = True
+
+        # prepare PWM
+        PWM16 = None
+        if sourceMode == "web":
+            PWM16 = PWMFromWeb
+        
+        elif sourceMode == "kinect":
+            frame = getFrame()
+            frame = preprocessKinectDepth(frame)
+            PWM16 = depthToPWM(frame)
+        
+        # set PWM
+        assert PWM16 is not None    
+        setVibrationFromPWM(PWM16)
+
+        
 
     print "[Renderer] shutdown requested"
     GPIO.cleanup()
@@ -315,6 +355,8 @@ def send_motors():
     """ Handles AJAX requests. """
 
     requestJson = request.get_json()
+
+    # send to renderer process
     webServer.extensions['queue'].put(requestJson)
 
     retVal = {"message": "hi from Flask"}
