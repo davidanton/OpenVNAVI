@@ -1,0 +1,205 @@
+<html>
+<head>
+<title>OpenVNAVI Controller</title>
+<script type=text/javascript src="{{url_for('static', filename='jquery-1.11.3.min.js') }}"></script>
+<script type=text/javascript src="{{url_for('static', filename='png.js') }}"></script>
+</head>
+
+<body>
+<script type=text/javascript>
+  $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+</script>
+
+<h2>Vibration motor values</h2>
+
+<div>
+    Input mode:
+    <input type="radio" name="inputMode" value="kinect">Kinect</td>
+    <input type="radio" name="inputMode" value="web">Web</td>
+</div>
+
+<div id="motorsContainer"></div>
+<button id="sendButton">Send</button>
+
+<h3>Manipulate</h3>
+<div>
+    Set all: <input id="setAllInput" type="text" size = "3"/>
+    <button id="setAllButton">Set</button>
+</div>
+
+<div>
+    Find: <input id="findInput" type="text" size = "3"/>
+    Replace:  <input id="replaceInput" type="text" size = "3"/>
+    <button id="replaceButton">Replace</button>
+</div>
+
+<h3>PNG input</h3>
+<div>
+    <input type="file" id="file">
+</div>
+
+<canvas width="160" height="80" id="outCanvas"></canvas>
+
+
+<!-- namespace -->
+<script type=text/javascript>
+    $(function() {
+        window.vnavi = {};
+    });
+</script>
+
+<!-- motor text array -->
+<script type=text/javascript>
+  $(function() {
+    // global parameters
+    var rowCount = 8
+    var colCount = 16
+
+
+    // create text boxes for motor input
+    var inputContainer = $('div#motorsContainer');
+    var motorInputs = [];
+
+    // expose variables to namespace
+    window.vnavi.motorInputs = motorInputs;
+
+    for (var row = 0; row < rowCount; row++)
+    {
+        for (var col = 0; col < colCount; col++)
+        {
+            var aMotorInput = $("<input type='text' size = '3' value='0'/>");
+            motorInputs.push(aMotorInput);
+            inputContainer.append(aMotorInput);
+        }
+        inputContainer.append($("<br/>"));
+    }
+
+    // listen to submit button event
+    $('#sendButton').bind('click', function() {
+        var motorValues = [];
+        for (var row = 0; row < rowCount; row++)
+        {
+            rowValues = []
+            for (var col = 0; col < colCount; col++)
+            {
+                var index = row * colCount + col;
+                var motorValue = parseInt(motorInputs[index].val());
+                rowValues.push(motorValue);
+            }
+            motorValues.push(rowValues)
+        }
+
+        var modeValue = $("input[name=inputMode]:checked").val();
+
+        // handler for server response
+        var responseHanlder = function(data) 
+        {
+            console.log(data);
+        }
+        
+        // data to be sent to the server
+        var data = {
+            "motors": motorValues,
+            "mode": modeValue
+        }
+
+        // sending data to server
+        $.ajax({
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(data),
+            dataType: 'json',
+            url: $SCRIPT_ROOT + '/_send_motors',
+            success: responseHanlder
+        });
+    
+
+        // end bind()
+        return false;
+    
+    });
+  });
+</script>
+
+<!-- manipulate -->
+<script type="text/javascript">
+    $(function() {
+       
+        $('#setAllButton').bind('click', function() {
+            var inputValue = $("#setAllInput").val();
+            $.each(window.vnavi.motorInputs, function(index, motorInput) {
+                motorInput.val(inputValue);
+            });
+
+            // end bind()
+            return false;
+        });
+
+        $('#replaceButton').bind('click', function() {
+            var findValue = $("#findInput").val();
+            var replaceValue = $("#replaceInput").val();
+            $.each(window.vnavi.motorInputs, function(index, motorInput) {
+                if (motorInput.val() == findValue)
+                {
+                    motorInput.val(replaceValue);
+                }
+            });
+
+            // end bind()
+            return false;
+        });
+
+    });
+</script>
+
+<!-- PNG input -->
+<script type=text/javascript>
+    var reader = new FileReader();
+
+    reader.onload = function(event){
+        var bytes = event.target.result;
+        var pngReader = new PNGReader(bytes);
+        pngReader.parse(function(err, png){
+            if (err) throw err;
+            // console.log('image is <' + png.width + ',' + png.height +'>');
+            // console.log(png);
+            drawOnCanvas(png);
+        });
+    };
+
+    var file = document.getElementById('file');
+    file.onchange = function(event){
+        reader.readAsArrayBuffer(file.files[0]);
+    }
+
+    var drawOnCanvas = function(png){
+        var i = 0;
+        var width = 16
+        var height = 8
+
+        var outCanvas = document.getElementById('outCanvas');
+        var zoom = outCanvas.width / width;
+        var outCtx = outCanvas.getContext('2d');
+        
+        for (var y = 0; y < height; y++){
+            for (var x = 0; x < width; x++){
+                var colors = png.getPixel(x, y);
+                var r = colors[0];
+                var g = colors[1];
+                var b = colors[2];
+                var a = colors[3];
+                window.vnavi.motorInputs[y * width + x].val(colors[0]);
+                outCtx.fillStyle = "rgba("+r+","+g+","+b+","+(a/255)+")";
+                outCtx.fillRect(x*zoom,y*zoom,zoom,zoom);
+            }
+        }
+
+
+    }
+
+</script>
+
+
+</body>
+
+</html>
