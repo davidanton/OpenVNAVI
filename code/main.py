@@ -29,7 +29,7 @@ from PWM_driver import PWM
 from flask import Flask, jsonify, render_template, request
 import multiprocessing as mp
 import timeit
-
+import ctypes
 
 # ============================================================================
 # Constants
@@ -65,6 +65,8 @@ minPWM = 20  # TODO: determine proper min
 farDepth = 0  # TODO: determine proper max
 nearDepth = 255  # TODO: determine proper min
 
+shared_depthImg = None
+shared_PWM = None
 
 # ============================================================================
 # Definitions
@@ -319,12 +321,19 @@ def rendererProcess(webQueue, ipcQueue):
         elif sourceMode == "kinect":
             frame = getFrame()
             frame = preprocessKinectDepth(frame)
+
+            # save a copy of PWM to share with the web server
+            shared_depthImg[:] = frame[:]
+
+            # convert to PWM            
             PWM16 = depthToPWM(frame)
         
         # set PWM
         assert PWM16 is not None    
         setVibrationFromPWM(PWM16)
 
+        # save a copy of PWM to share with the web server
+        shared_PWM[:] = PWM16[:]
         
 
     print "[Renderer] shutdown requested"
@@ -357,10 +366,13 @@ def send_motors():
 
     # send to renderer process
     webServer.extensions['queue'].put(requestJson)
+    return ""
 
-    retVal = {"message": "hi from Flask"}
+
+@webServer.route('/_get_render_data')
+def get_render_data():
+    retVal = {"PWM": shared_PWM.tolist(), "depth": shared_depthImg.tolist()}
     return jsonify(**retVal)
-
 
 def webserverProcess(webQueue, ipcQueue):
 
@@ -382,10 +394,22 @@ def webserverProcess(webQueue, ipcQueue):
 # Main function
 # ============================================================================
 def main():
+    global shared_depthImg, shared_PWM
 
     # for inter-process communication
     webQueue = mp.Queue()
     ipcQueue = mp.Queue()
+    
+    # NOTE: ctypes will complain about PEP 3118, but it's fine. 
+    # (Known ctypes bug: http://stackoverflow.com/questions/4964101/pep-3118-warning-when-using-ctypes-array-as-numpy-array)
+    shared_depthImg_base = mp.Array(ctypes.c_double, 8 * 16)
+    shared_depthImg = np.ctypeslib.as_array(shared_depthImg_base.get_obj())
+    shared_depthImg = shared_depthImg.reshape(8, 16)
+
+    shared_PWM_base = mp.Array(ctypes.c_double, 8 * 16)
+    shared_PWM = np.ctypeslib.as_array(shared_PWM_base.get_obj())
+    shared_PWM = shared_PWM.reshape(8, 16)
+
 
     # web server process
     p_webserver = mp.Process(target=webserverProcess, args=(webQueue, ipcQueue))

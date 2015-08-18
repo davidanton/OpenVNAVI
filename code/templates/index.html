@@ -18,6 +18,7 @@
     <input type="radio" name="inputMode" value="web">Web</td>
 </div>
 
+<h3>PWM Input</h3>
 <div id="motorsContainer"></div>
 <button id="sendButton">Send</button>
 
@@ -41,10 +42,19 @@
 <canvas width="160" height="80" id="outCanvas"></canvas>
 
 
+<h3>PWM Output</h3>
+<div id="outPWMContainer"></div>
+
+<h3>Downsampled depth image</h3>
+<div id="depthImgContainer"></div>
+<button id="updateButton">Update</button>
+
 <!-- namespace -->
 <script type=text/javascript>
     $(function() {
         window.vnavi = {};
+        window.vnavi.rowCount = 8
+        window.vnavi.colCount = 16
     });
 </script>
 
@@ -52,9 +62,8 @@
 <script type=text/javascript>
   $(function() {
     // global parameters
-    var rowCount = 8
-    var colCount = 16
-
+    var rowCount = window.vnavi.rowCount
+    var colCount = window.vnavi.colCount
 
     // create text boxes for motor input
     var inputContainer = $('div#motorsContainer');
@@ -63,6 +72,7 @@
     // expose variables to namespace
     window.vnavi.motorInputs = motorInputs;
 
+    // create text input widgets
     for (var row = 0; row < rowCount; row++)
     {
         for (var col = 0; col < colCount; col++)
@@ -91,12 +101,6 @@
 
         var modeValue = $("input[name=inputMode]:checked").val();
 
-        // handler for server response
-        var responseHanlder = function(data) 
-        {
-            console.log(data);
-        }
-        
         // data to be sent to the server
         var data = {
             "motors": motorValues,
@@ -104,14 +108,20 @@
         }
 
         // sending data to server
-        $.ajax({
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(data),
-            dataType: 'json',
-            url: $SCRIPT_ROOT + '/_send_motors',
-            success: responseHanlder
-        });
+        var jqxhr = $.ajax({
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                dataType: 'json',
+                url: $SCRIPT_ROOT + '/_send_motors',
+                success: responseHanlder
+            })
+            .done(function(data) 
+                {
+                    // console.log(data);
+                }
+            );
+
     
 
         // end bind()
@@ -196,9 +206,63 @@
 
 
     }
-
 </script>
 
+<!-- output snapshot -->
+<script type=text/javascript>
+    $(function() {
+        // global parameters
+        var rowCount = window.vnavi.rowCount
+        var colCount = window.vnavi.colCount
+
+        // create text boxes for motor input
+        var outPWMDiv = $('div#outPWMContainer');
+        var depthImgDiv = $('div#depthImgContainer');
+
+        // local variables
+        var outPWMWidgets = [];
+        var depthWidgets = [];
+
+        // expose variables to namespace
+        window.vnavi.outPWMWidgets = outPWMWidgets;
+        window.vnavi.depthWidgets = depthWidgets;
+
+        // create text input widgets
+        for (var row = 0; row < rowCount; row++)
+        {
+            for (var col = 0; col < colCount; col++)
+            {
+                var aWidget = $("<input type='text' size = '3' value='0'/>");
+                outPWMWidgets.push(aWidget);
+                outPWMDiv.append(aWidget);
+
+                var aWidget = $("<input type='text' size = '3' value='0'/>");
+                depthWidgets.push(aWidget);
+                depthImgDiv.append(aWidget);
+            }
+            outPWMDiv.append($("<br/>"));
+            depthImgDiv.append($("<br/>"));
+        }
+
+
+        // handle update button
+        $('#updateButton').bind('click', function() {
+            var jqxhr = $.get($SCRIPT_ROOT + '/_get_render_data')
+                .done(function (data) {
+                    
+                    for (var row = 0; row < rowCount; row++)
+                    {
+                        for (var col = 0; col < colCount; col++)
+                        {
+                            outPWMWidgets[row * colCount + col].val(data["PWM"][row][col])
+                            depthWidgets[row * colCount + col].val(data["depth"][row][col])
+                        }
+                    }
+
+                });
+        });
+    });
+</script>
 
 </body>
 
