@@ -1,4 +1,4 @@
-update=Di 11 Aug 2015 00:22:01 CEST
+update=Mo 07 Sep 2015 12:04:15 CEST
 version=1
 last_client=kicad
 [cvpcb]
@@ -61,3 +61,13 @@ LibName28=atmel
 LibName29=contrib
 LibName30=valves
 LibName31=/mnt/hgfs/David/Dropbox/TFG/OpenVNAVI/kicad libraries/OpenVNAVI component library
+[schematic_editor]
+version=1
+PageLayoutDescrFile=
+PlotDirectoryName=
+SubpartIdSeparator=0
+SubpartFirstId=65
+NetFmtName=
+SpiceForceRefPrefix=0
+SpiceUseNetNumbers=0
+LabSize=60

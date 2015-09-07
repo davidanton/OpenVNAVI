@@ -7,7 +7,7 @@
 OpenVNAVI (Open Vibrotactile Navigation Aid for the Visually Impaired)
 Author: David Antón Sánchez
 License: GPLv3
-github.com/davidanton
+github.com/davidanton/OpenVNAVI
 ==============================================================================
 //////////////////////////////////////////////////////////////////////////////
 """

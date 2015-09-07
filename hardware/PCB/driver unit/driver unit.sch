@@ -29,7 +29,6 @@ LIBS:atmel
 LIBS:contrib
 LIBS:valves
 LIBS:OpenVNAVI component library
-LIBS:driver PCB-cache
 EELAYER 25 0
 EELAYER END
 $Descr A2 23386 16535
@@ -3250,6 +3249,4 @@ Wire Wire Line
 	7350 9500 7350 10850
 Wire Wire Line
 	7350 10850 9875 10850
-Text Notes 17000 10500 0    808  ~ 0
-Notes
 $EndSCHEMATC
