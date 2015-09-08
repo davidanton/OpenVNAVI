@@ -46,4 +46,4 @@ With this method the vibration motor unit array is able to represent a vibratory
 
 ![](https://github.com/davidanton/OpenVNAVI/blob/master/doc/img/test2.JPG)
 
-![](https://github.com/davidanton/OpenVNAVI/blob/master/doc/img/test3.JPG)
+![](https://github.com/davidanton/OpenVNAVI/blob/master/doc/img/test3.png)
