@@ -199,7 +199,7 @@ def setVibration(frame = None):
             if PWM16[row,col] > maxPWM:
                 PWM16[row,col] = maxPWM
             elif PWM16[row,col] == 0:
-                PWM16[row,col] = maxPWM
+                # PWM16[row,col] = maxPWM
             else:
                 IC[row].setPWM(col,0,(PWM16[row,col]))
                 # print (PWM16[row,col]),
